@@ -2,7 +2,7 @@ import "dotenv/config"
 import express from "express"
 import cors from "cors"
 import bodyParser from "body-parser"
-import mongoose from "mongoose"
+import mongoose, { mongo } from "mongoose"
 
 const app = express()
 app.use(cors())
@@ -23,27 +23,23 @@ app.get("/listings", async (req, res) => {
     res.json(allListings)
 })
 
-app.get("/users", async (req, res) => {
-    const allUsers = await User.find({}).sort("username")
-    res.json(allUsers)
-})
-
 const listingSchema = new mongoose.Schema({
     name: String,
     location: String
+    // user: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "User"
+    // }
 })
 
 const userSchema = new mongoose.Schema({
-    username: String,
-    name: String,
-    userEmail: String,
-    listings: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Listing"
+    userEmail: {
+        type: String,
+        required: true
     },
-    favouriteListings: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "FavouriteListing"
+    lastLogin: {
+        type: Date, 
+        required: true
     }
 })
 
@@ -65,47 +61,13 @@ app.post("/listings/add", (req, res) => {
     .catch(error => console.error(error))
 })
 
-app.post("/users/add", (req, res) => {
-    const user = req.body
-    const newUser = new User({
-        username: user.username,
-        name: user.name,
-        userEmail: user.userEmail
-    })
-
-    newUser.save()
-    .then(() => {
-        console.log(`New user ${user.username} was added to the database`)
-    })
-    .catch(error => console.error(error))
-})
-
 app.get("/listings/:id", async (req, res) => {
     const listing = await Listing.findById(req.params.id)
     res.json(listing)
 })
 
-app.get("/users/:id", async (req, res) => {
-    const user = await User.findById(req.params.id)
-    res.json(user)
-})
-
 app.put("/listings/:id", (req, res) => {
-    Listing.updateOne({"_id": req.params.id}, {name: req.body.name}, {location: req.body.location})
-    .then(() => {
-        res.sendStatus(200)
-    })
-    .catch(error => {
-        res.sendStatus(500)
-    })
-})
-
-app.put("/users/:id", (req, res) => {
-    User.updateOne(
-        {"_id": req.params.id}, 
-        {username: req.body.username}, 
-        {name: req.body.username}, 
-        {userEmail: req.body.userEmail})
+    Listing.updateOne({"_id": req.params.id}, {name: req.body.name, location: req.body.location})
     .then(() => {
         res.sendStatus(200)
     })
@@ -125,16 +87,25 @@ app.delete("/listings/:id", (req, res) => {
     })
 })
 
-app.delete("/users/:id", (req, res) => {
-    User.deleteOne({"_id": req.params.id})
-    .then(() => {
-        console.log(`User ID ${req.params.id} was deleted`)
-        res.sendStatus(200)
-    })
-    .catch(error => {
-        res.sendStatus(500)
-    })
-})
+app.post("/user/login", async (req, res) => {
+    const now = new Date()
 
+    if ( await User.countDocuments({"userEmail": req.body.userEmail}) === 0 ) {
+        const newUser = new User({
+            userEmail: req.body.userEmail,
+            lastLogin: now
+        })
+        newUser.save()
+        .then(() => {
+            res.sendStatus(200)
+        })
+        .catch(err => {
+            res.sendStatus(500)
+        })
+    } else {
+        await User.findOneAndUpdate({"UserEmail": req.body.userEmail}, {lastLogin: now})
+        res.sendStatus(200)
+    }
+})
 
 
