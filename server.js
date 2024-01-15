@@ -4,6 +4,9 @@ import cors from "cors"
 import bodyParser from "body-parser"
 import mongoose, { mongo } from "mongoose"
 
+/*-----------*/
+let userEmail = ""
+
 const app = express()
 app.use(cors())
 app.use(bodyParser.json())
@@ -25,11 +28,12 @@ app.get("/listings", async (req, res) => {
 
 const listingSchema = new mongoose.Schema({
     name: String,
-    location: String
-    // user: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "User"
-    // }
+    location: String,
+    // address: String,
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }
 })
 
 const userSchema = new mongoose.Schema({
@@ -46,19 +50,41 @@ const userSchema = new mongoose.Schema({
 const Listing = mongoose.model("Listing", listingSchema)
 const User = mongoose.model("User", userSchema)
 
-app.post("/listings/add", (req, res) => {
-    const listing = req.body
+// app.post("/listings/add", async (req, res) => {
+//     const listing = req.body
+//     // const user = req.body
+//     const user = req.body.userEmail
 
-    const newListing = new Listing({
-        name: listing.name, 
-        location: listing.location
-    })
-    newListing.save()
-    .then(() => {
-        console.log(`New listing ${listing.name}, location: ${listing.location} was added to the database`)
-        res.sendStatus(200)
-    })
-    .catch(error => console.error(error))
+//     const newListing = new Listing({name: listing.name, location: listing.location, user: user.userEmail})
+//     newListing.save()
+//     .then(() => {
+//         // console.log(userEmail)
+//         console.log(`New listing ${listing.name}, location: ${listing.location}, user: ${user.userEmail} was added to the database`)
+//         res.sendStatus(200)
+//     })
+//     .catch(error => console.error(error))
+// })
+
+app.post("/listings/add", async (req, res) => {
+    // if ( await User.countDocuments({"userEmail": req.body.userEmail}) > 0) {
+        addListing(req.body.userEmail)
+    // }
+    async function addListing(reqUser) {
+        const user = await User.findOne({"userEmail": reqUser})
+        // userEmail = req.body.userEmail
+        console.log(req.body)
+        const listing = new Listing({
+            name: req.body.name,
+            location: req.body.location,
+            user: user,
+        })
+        listing.save()
+        .then(() => {
+            console.log(`New listing ${listing.name}, location: ${listing.location}, user: ${user.userEmail} added`)
+            res.sendStatus(200)
+        })
+        .catch(err => console.error(err))
+    }
 })
 
 app.get("/listings/:id", async (req, res) => {
