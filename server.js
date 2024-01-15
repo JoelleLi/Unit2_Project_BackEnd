@@ -32,6 +32,9 @@ const listingSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
+    },
+    image: {
+        url: String
     }
 })
 
@@ -61,6 +64,8 @@ app.post("/listings/add", async (req, res) => {
             location: req.body.location,
             address: req.body.address,
             user: user,
+            image: {url: req.body.image}
+            // primaryImage: req.body.primaryImage || 0  // Default to the first image if primaryImage is not provided
         })
         listing.save()
         .then(() => {
@@ -77,7 +82,7 @@ app.get("/listings/:id", async (req, res) => {
 })
 
 app.put("/listings/:id", (req, res) => {
-    Listing.updateOne({"_id": req.params.id}, {name: req.body.name, location: req.body.location})
+    Listing.updateOne({"_id": req.params.id}, {name: req.body.name, location: req.body.location, address: req.body.address, image: req.body.image})
     .then(() => {
         res.sendStatus(200)
     })
