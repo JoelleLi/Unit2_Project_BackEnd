@@ -4,7 +4,6 @@ import cors from "cors"
 import bodyParser from "body-parser"
 import mongoose, { mongo } from "mongoose"
 
-/*-----------*/
 let userEmail = ""
 
 const app = express()
@@ -29,7 +28,7 @@ app.get("/listings", async (req, res) => {
 const listingSchema = new mongoose.Schema({
     name: String,
     location: String,
-    // address: String,
+    address: String,
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
@@ -50,37 +49,22 @@ const userSchema = new mongoose.Schema({
 const Listing = mongoose.model("Listing", listingSchema)
 const User = mongoose.model("User", userSchema)
 
-// app.post("/listings/add", async (req, res) => {
-//     const listing = req.body
-//     // const user = req.body
-//     const user = req.body.userEmail
-
-//     const newListing = new Listing({name: listing.name, location: listing.location, user: user.userEmail})
-//     newListing.save()
-//     .then(() => {
-//         // console.log(userEmail)
-//         console.log(`New listing ${listing.name}, location: ${listing.location}, user: ${user.userEmail} was added to the database`)
-//         res.sendStatus(200)
-//     })
-//     .catch(error => console.error(error))
-// })
-
 app.post("/listings/add", async (req, res) => {
-    // if ( await User.countDocuments({"userEmail": req.body.userEmail}) > 0) {
-        addListing(req.body.userEmail)
-    // }
+    
+    addListing(req.body.userEmail)
+
     async function addListing(reqUser) {
         const user = await User.findOne({"userEmail": reqUser})
-        // userEmail = req.body.userEmail
         console.log(req.body)
         const listing = new Listing({
             name: req.body.name,
             location: req.body.location,
+            address: req.body.address,
             user: user,
         })
         listing.save()
         .then(() => {
-            console.log(`New listing ${listing.name}, location: ${listing.location}, user: ${user.userEmail} added`)
+            console.log(`New listing ${listing.name}, location: ${listing.location}, address: ${listing.address}, user: ${user.userEmail} added`)
             res.sendStatus(200)
         })
         .catch(err => console.error(err))
@@ -88,7 +72,7 @@ app.post("/listings/add", async (req, res) => {
 })
 
 app.get("/listings/:id", async (req, res) => {
-    const listing = await Listing.findById(req.params.id)
+    const listing = await Listing.findById(req.params.id).populate("user")
     res.json(listing)
 })
 
