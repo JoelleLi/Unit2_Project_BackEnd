@@ -4,8 +4,6 @@ import cors from "cors"
 import bodyParser from "body-parser"
 import mongoose, { mongo } from "mongoose"
 
-let userEmail = ""
-
 const app = express()
 app.use(cors())
 app.use(bodyParser.json())
@@ -25,6 +23,17 @@ app.get("/listings", async (req, res) => {
     res.json(allListings)
 })
 
+app.get("/listings/mylistings/:userId", async (req, res) => {
+    const userId = req.params.userId
+    const myUser = await User.find({
+        userEmail: userId
+    })
+    const myListings = await Listing.find({"user": myUser}).populate("user")
+    // const myListings = await User.find({"userEmail" : req.body.userEmail}).populate("Listing")
+    res.json(myListings)
+    console.log(myListings)
+})
+
 const listingSchema = new mongoose.Schema({
     name: String,
     location: String,
@@ -33,9 +42,12 @@ const listingSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     },
-    image: {
-        url: String
+    image: String,
+    images: {
+        type: [String]
     }
+    // public: Boolean,
+    // private: Boolean
 })
 
 const userSchema = new mongoose.Schema({
@@ -64,7 +76,8 @@ app.post("/listings/add", async (req, res) => {
             location: req.body.location,
             address: req.body.address,
             user: user,
-            image: {url: req.body.image}
+            image: req.body.image,
+            images: req.body.images
             // primaryImage: req.body.primaryImage || 0  // Default to the first image if primaryImage is not provided
         })
         listing.save()
@@ -82,7 +95,7 @@ app.get("/listings/:id", async (req, res) => {
 })
 
 app.put("/listings/:id", (req, res) => {
-    Listing.updateOne({"_id": req.params.id}, {name: req.body.name, location: req.body.location, address: req.body.address, image: req.body.image})
+    Listing.updateOne({"_id": req.params.id}, {name: req.body.name, location: req.body.location, address: req.body.address, image: req.body.image.url})
     .then(() => {
         res.sendStatus(200)
     })
