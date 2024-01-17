@@ -29,25 +29,19 @@ app.get("/listings/mylistings/:userId", async (req, res) => {
         userEmail: userId
     })
     const myListings = await Listing.find({"user": myUser}).populate("user")
-    // const myListings = await User.find({"userEmail" : req.body.userEmail}).populate("Listing")
+    console.log(userId)
     res.json(myListings)
-    console.log(myListings)
 })
 
-const listingSchema = new mongoose.Schema({
-    name: String,
-    location: String,
-    address: String,
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
-    },
-    image: String,
-    images: {
-        type: [String]
-    }
-    // public: Boolean,
-    // private: Boolean
+app.get("/categories/city/:city", async (req, res) => {
+    const oneCity = req.params.city
+    const cityListings = await Listing.find({ city: oneCity })
+    res.json(cityListings)
+})
+
+app.get("/photos/", async (req, res) => {
+    const allPhotos = await Photos.find({})
+    res.json(allPhotos)
 })
 
 const userSchema = new mongoose.Schema({
@@ -61,8 +55,35 @@ const userSchema = new mongoose.Schema({
     }
 })
 
-const Listing = mongoose.model("Listing", listingSchema)
+const photoSchema = new mongoose.Schema({
+    photos: {
+        type: [String]
+    },
+    addedBy: {
+        type: mongoose.Schema.ObjectId, ref: "User", required: true
+    }
+})
+
+const listingSchema = new mongoose.Schema({
+    name: String,
+    city: String,
+    address: String,
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    },
+    image: String,
+    images: {
+        type: [String]
+    },
+    photos: [photoSchema],
+    public: Boolean,
+    private: Boolean,
+    contactInfo: String
+})
+
 const User = mongoose.model("User", userSchema)
+const Listing = mongoose.model("Listing", listingSchema)
 
 app.post("/listings/add", async (req, res) => {
     
@@ -73,19 +94,56 @@ app.post("/listings/add", async (req, res) => {
         console.log(req.body)
         const listing = new Listing({
             name: req.body.name,
-            location: req.body.location,
+            city: req.body.city,
             address: req.body.address,
             user: user,
             image: req.body.image,
-            images: req.body.images
-            // primaryImage: req.body.primaryImage || 0  // Default to the first image if primaryImage is not provided
+            images: req.body.images,
+            photos: req.body.photos,
+            public: req.body.public,
+            private: req.body.private,
+            contactInfo: req.body.contactInfo
         })
         listing.save()
         .then(() => {
-            console.log(`New listing ${listing.name}, location: ${listing.location}, address: ${listing.address}, user: ${user.userEmail} added`)
+            console.log(`New listing ${listing.name}, location: ${listing.city}, address: ${listing.address}, user: ${user.userEmail} added`)
             res.sendStatus(200)
         })
         .catch(err => console.error(err))
+    }
+})
+
+app.post("/listings/:id/photos/add", async (req, res) => {
+
+    addPhotos(req.body.userEmail)
+
+    async function addPhotos(reqUser) {
+        const user = await User.findOne({"userEmail": reqUser})
+        console.log(user)
+        const listing = await Listing.findOne({"_id": req.params.id})
+        const createPhotos = listing.photos.create ({ ...req.body, addedBy: user._id })
+        listing.photos.push(createPhotos)
+
+        listing.save()
+        .then(() => {
+            res.sendStatus(200)
+        })
+        .catch(err => console.error(err))
+}})
+
+app.put("/listings/:id/photos/:photoId", async (req, res) => {
+    try {
+        const user = await User.findOne({"userEmail": req.body.userEmail})
+        const listing = await Listing.findOne({"_id": req.params.id})
+        const editPhotos = listing.photos.id( req.params.photoId )
+        if(!editPhotos.addedBy.equals(user._id)) {
+            console.log("unauthorized")
+        }
+        editPhotos.set(req.body)
+        await listing.save()
+        return res.status(200).json(listing.photos)
+    } catch(error){
+        console.log(error)
     }
 })
 
@@ -95,7 +153,17 @@ app.get("/listings/:id", async (req, res) => {
 })
 
 app.put("/listings/:id", (req, res) => {
-    Listing.updateOne({"_id": req.params.id}, {name: req.body.name, location: req.body.location, address: req.body.address, image: req.body.image.url})
+    Listing.updateOne({"_id": req.params.id}, {
+        name: req.body.name, 
+        city: req.body.city, 
+        address: req.body.address, 
+        image: req.body.image, 
+        images: req.body.images, 
+        photos: req.body.photos,
+        public: req.body.public,
+        private: req.body.private,
+        contactInfo: req.body.contactInfo
+    })
     .then(() => {
         res.sendStatus(200)
     })
