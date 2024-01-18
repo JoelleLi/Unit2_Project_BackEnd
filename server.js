@@ -39,6 +39,16 @@ app.get("/categories/city/:city", async (req, res) => {
     res.json(cityListings)
 })
 
+app.get("/categories/public", async (req, res) => {
+    const publicListings = await Listing.find({ public: true })
+    res.json(publicListings)
+})
+
+app.get("/categories/private", async (req, res) => {
+    const privateListings = await Listing.find({ private: true })
+    res.json(privateListings)
+})
+
 app.get("/photos/", async (req, res) => {
     const allPhotos = await Photos.find({})
     res.json(allPhotos)
@@ -79,11 +89,14 @@ const listingSchema = new mongoose.Schema({
     photos: [photoSchema],
     public: Boolean,
     private: Boolean,
-    contactInfo: String
+    telephone: String,
+    emailAddress: String,
+    description: String
 })
 
 const User = mongoose.model("User", userSchema)
 const Listing = mongoose.model("Listing", listingSchema)
+// const Photo = mongoose.model("Listing", photoSchema)
 
 app.post("/listings/add", async (req, res) => {
     
@@ -102,7 +115,9 @@ app.post("/listings/add", async (req, res) => {
             photos: req.body.photos,
             public: req.body.public,
             private: req.body.private,
-            contactInfo: req.body.contactInfo
+            telephone: req.body.telephone,
+            emailAddress: req.body.emailAddress,
+            description: req.body.description
         })
         listing.save()
         .then(() => {
@@ -136,6 +151,7 @@ app.put("/listings/:id/photos/:photoId", async (req, res) => {
         const user = await User.findOne({"userEmail": req.body.userEmail})
         const listing = await Listing.findOne({"_id": req.params.id})
         const editPhotos = listing.photos.id( req.params.photoId )
+        console.log(listing.photos)
         if(!editPhotos.addedBy.equals(user._id)) {
             console.log("unauthorized")
         }
@@ -162,7 +178,9 @@ app.put("/listings/:id", (req, res) => {
         photos: req.body.photos,
         public: req.body.public,
         private: req.body.private,
-        contactInfo: req.body.contactInfo
+        telephone: req.body.telephone,
+        emailAddress: req.body.emailAddress,
+        description: req.body.description
     })
     .then(() => {
         res.sendStatus(200)
@@ -181,6 +199,45 @@ app.delete("/listings/:id", (req, res) => {
     .catch(error => {
         res.sendStatus(500)
     })
+})
+
+// app.delete("/listings/:id/photos/:photoId", (req, res) => {
+//     const listing = Listing.findOne({"_id": req.params.id})
+//     const deletePhotos = listing.photos.id( req.params.photoId )
+
+//     deletePhotos.deleteOne({"_id": req.params.photoId})
+
+//     .then(() => {
+//         console.log(`Photos ID ${req.params.photoId} was deleted`)
+//         res.sendStatus(200)
+//     })
+//     .catch(error => {
+//         res.sendStatus(500)
+//     })
+// })
+
+app.delete("/listings/:id/photos/:photoId", async (req, res) => {
+    try {
+        // console.log(req.params)
+        const listing = await Listing.findOne({ "_id": req.params.id })
+        // console.log(listing)
+
+        // Remove the photo from the photos array
+        listing.photos = listing.photos.filter(photo => {
+            // console.log(photo._id, req.params.photoId)
+
+            // if (photo._id.equals(req.params.photoId)) {
+            //     console.log("TRUE")
+            // }
+            return !photo._id.equals(req.params.photoId)
+        })
+        await listing.save()
+        console.log(`Photo ID ${req.params.photoId} was deleted`)
+        res.sendStatus(200)
+    } catch (error) {
+        console.error(error)
+        res.sendStatus(500)
+    }
 })
 
 app.post("/user/login", async (req, res) => {
